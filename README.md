@@ -1,1 +1,1 @@
-# mars
+# MARS project
