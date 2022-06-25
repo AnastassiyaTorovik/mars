@@ -9,6 +9,7 @@ class Device(models.Model):
         db_table = 'devices'
         verbose_name = 'available devices'
         verbose_name_plural = 'available devices'
+        constraints = [models.UniqueConstraint(fields=['manufacturer', 'model'], name='unique_device')]
 
     manufacturer = models.TextField(verbose_name='device manufacturer')
     model = models.TextField(verbose_name='device model')
@@ -24,6 +25,7 @@ class Customer(models.Model):
         verbose_name_plural = 'customers\' details'
 
     customer_name = models.TextField()
+    customer_registration_no = models.IntegerField(unique=True, null=True, default=None)
     customer_address = models.TextField()
     customer_city = models.TextField()
 
@@ -40,12 +42,15 @@ class DeviceInField(models.Model):
     analyzer_id = models.ForeignKey(Device, on_delete=models.RESTRICT)
     owner_status = models.TextField()
 
+    def __str__(self):
+        return f'{self.serial_number} {self.analyzer_id}'
+
 
 def status_validator(order_status):
     if order_status not in ['open', 'closed', 'in progress', 'need info']:
         raise ValidationError(
-            gettext_lazy('%(order_status)s is wrong order status',
-                         params={'order_status': order_status})
+            gettext_lazy('%(order_status)s is wrong order status'),
+                         params={'order_status': order_status},
         )
 
 
@@ -58,7 +63,7 @@ class Order(models.Model):
     order_description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     last_updated_at = models.DateField(blank=True, null=True)
-    order_status = models.TextField(validators=[])
+    order_status = models.TextField(validators=[status_validator])
 
     def save(self, *args, **kwargs):
         self.last_updated_at = datetime.now()
