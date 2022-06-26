@@ -1,7 +1,5 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 from datetime import datetime
-from django.utils.translation import gettext_lazy
 
 
 class Device(models.Model):
@@ -36,36 +34,33 @@ class Customer(models.Model):
 class DeviceInField(models.Model):
     class Meta:
         db_table = 'devices_in_fields'
+        constraints = [models.UniqueConstraint(fields=['serial_number', 'analyzer'], name='unique_device_in_field')]
 
     serial_number = models.TextField()
-    customer_id = models.ForeignKey(Customer, on_delete=models.RESTRICT)
-    analyzer_id = models.ForeignKey(Device, on_delete=models.RESTRICT)
+    customer = models.ForeignKey(Customer, on_delete=models.RESTRICT)
+    analyzer = models.ForeignKey(Device, on_delete=models.RESTRICT)
     owner_status = models.TextField()
 
     def __str__(self):
-        return f'{self.serial_number} {self.analyzer_id}'
-
-
-def status_validator(order_status):
-    if order_status not in ['open', 'closed', 'in progress', 'need info']:
-        raise ValidationError(
-            gettext_lazy('%(order_status)s is wrong order status'),
-                         params={'order_status': order_status},
-        )
+        return f'{self.serial_number} {self.analyzer} for {self.customer}'
 
 
 class Order(models.Model):
     class Meta:
         db_table = 'orders'
 
+    statuses = (('open', 'open'), ('closed', 'closed'), ('in progress', 'in progress'), ('need info', 'need info'))
+
     device = models.ForeignKey(DeviceInField, on_delete=models.RESTRICT)
-    customer = models.ForeignKey(Customer, on_delete=models.RESTRICT)
     order_description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     last_updated_at = models.DateField(blank=True, null=True)
-    order_status = models.TextField(validators=[status_validator])
+    order_status = models.TextField(choices=statuses)
 
     def save(self, *args, **kwargs):
         self.last_updated_at = datetime.now()
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'order number {self.id} for {self.device}'
 
